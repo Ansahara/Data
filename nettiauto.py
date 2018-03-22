@@ -17,19 +17,47 @@ soup = BeautifulSoup(response.content, 'html.parser')
 
 #haetaan kaikki autoihin liittyvät linkit
 car_containers = soup.find_all('a', class_ = 'childVifUrl tricky_link')
+data_box = soup.find_all('div', class_ = 'data_box')
+infos = soup.find_all('div', class_ = 'vehicle_other_info clearfix_nett')
 
-#luodaan etusivulta saataville tiedoille listat
-links = []
+
+
+#luodaan listoja ominaisuuksille
 vuosimalli = []
 mittarilukema = []
+kayttovoima = []
+vaihteisto = []
+links = []
 hinta = []
 ids = []
+moottori = []
+malli = []
 
-#käydään auto kerraallaan läpi ja lisätään tiedot listaan
+#käydään infoboksi läpi ja lisätään tiedot listoihin
+for info in infos:
+    lis = info.find_all('li')
+    i = 1
+    for li in lis:
+        jakojaannos = i % 4
+        if jakojaannos == 1:
+            vuosimalli.append(int(li.text))
+        elif jakojaannos == 2:
+            mittarilukema.append(li.text)
+        elif jakojaannos == 3:
+            kayttovoima.append(li.text)
+        elif jakojaannos == 0:
+            vaihteisto.append(li.text)
+        i += 1
+        
+            
+#käydään läpi data_boxi
+for data in data_box:
+    moottori.append(data.span.text)
+    malli.append(data.div.text)
+
+#käydään auto kerraallaan läpi  linkki ja lisätään tiedot listaan
 for car in car_containers:
     links.append(car.get('href'))
-    vuosimalli.append(int(car.get('data-year')))
-    mittarilukema.append(int(car.get('data-mileage')))
     hinta.append(int(car.get('data-price')))
     ids.append(car.get('data-id'))
     
@@ -99,9 +127,30 @@ for i in range(len(lista)):
     
         
  
-# Adding movies to pandas dataframe
+# lisätään tiedot pandasin datafreimiin
 df = pd.DataFrame({'id':ids, 'hinta':hinta, 'mittarilukema':mittarilukema, 
-                   'vuosimalli':vuosimalli})
+                   'vuosimalli':vuosimalli, 'kayttovoima':kayttovoima,
+                   'malli':malli, 'moottori':moottori, 'vaihteisto':vaihteisto})
+
+#muutetaan mittarilukema numeroksi
+df['mittarilukema'] = df['mittarilukema'].str.replace('km','')
+df['mittarilukema'] = df['mittarilukema'].str.replace(' ','')
+df['mittarilukema'] = pd.to_numeric(df['mittarilukema'])
+
+#muutetaan moottorin koko numeroksi
+df['moottori'] = df['moottori'].str.replace('(','')
+df['moottori'] = df['moottori'].str.replace(')','')
+df['moottori'] = pd.to_numeric(df['moottori'])
+
+#muutetaan kayttovoima numeroksi
+df['kayttovoima'] = df['kayttovoima'].str.replace('Bensiini', '0')
+df['kayttovoima'] = df['kayttovoima'].str.replace('Diesel', '1')
+df['kayttovoima'] = pd.to_numeric(df['kayttovoima'])
+
+#muutetaan vaihteisto numeroksi
+df['vaihteisto'] = df['vaihteisto'].str.replace('Manuaali', '0')
+df['vaihteisto'] = df['vaihteisto'].str.replace('Automaatti', '1')
+df['vaihteisto'] = pd.to_numeric(df['vaihteisto'])
 
 
 
@@ -111,7 +160,7 @@ df = pd.DataFrame({'id':ids, 'hinta':hinta, 'mittarilukema':mittarilukema,
 clf = linear_model.LinearRegression()
 print(df.corr())
 
-X = df['vuosimalli'].values[:, np.newaxis]     # Feature data set
+X = df['mittarilukema'].values[:, np.newaxis]     # Feature data set
 y = df['hinta']                         # Label data set
 
 classifier = clf.fit(X, y)
