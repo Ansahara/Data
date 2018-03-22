@@ -116,8 +116,8 @@ y = df['hinta']                         # Label data set
 
 classifier = clf.fit(X, y)
 
-plt.scatter(X, y, color='b')
-plt.plot(X, classifier.predict(X), color='r')
+plt.scatter(X, y, color='g')
+plt.plot(X, classifier.predict(X), color='y')
 
 plt.show()
   
