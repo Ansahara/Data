@@ -2,15 +2,17 @@ import requests
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 from sklearn import datasets
-from sklearn import linear_model
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
 
 
 from bs4 import BeautifulSoup
 
 #Pyydetään hakutuloksia
-response = requests.get('https://www.nettiauto.com/skoda/octavia?sortCol=enrolldate&ord=DESC')
+response = requests.get('https://www.nettiauto.com/audi/a3?sortCol=enrolldate&ord=DESC')
 
 
 soup = BeautifulSoup(response.content, 'html.parser')
@@ -142,6 +144,10 @@ df['moottori'] = df['moottori'].str.replace('(','')
 df['moottori'] = df['moottori'].str.replace(')','')
 df['moottori'] = pd.to_numeric(df['moottori'])
 
+#luodaan freimit johon tallentuu osuudet kokonaisotoksesta
+vaihteisto_osuudet = df['vaihteisto'].value_counts().to_frame('maara')
+kayttovoima_osuudet = df['kayttovoima'].value_counts().to_frame('maara')
+
 #muutetaan kayttovoima numeroksi
 df['kayttovoima'] = df['kayttovoima'].str.replace('Bensiini', '0')
 df['kayttovoima'] = df['kayttovoima'].str.replace('Diesel', '1')
@@ -153,9 +159,30 @@ df['vaihteisto'] = df['vaihteisto'].str.replace('Automaatti', '1')
 df['vaihteisto'] = pd.to_numeric(df['vaihteisto'])
 
 
+#Datan muovaamista ja visualisointia
+
+df_1 = df.groupby(['vuosimalli']).mean()
+
+df_1['maara'] = df['vuosimalli'].value_counts()
+
+
+df_1['hinta'].plot.bar()
+plt.ylabel('hinta')
+plt.show()
+
+
+df_1['mittarilukema'].plot.bar()
+plt.ylabel('Km')
+plt.show()
+
+df_1['maara'].plot.pie()
+plt.show()
 
 #aloitetaan koneoppimisosuus
 
+
+
+"""
  # Classifier to be used
 clf = linear_model.LinearRegression()
 print(df.corr())
@@ -169,4 +196,4 @@ plt.scatter(X, y, color='g')
 plt.plot(X, classifier.predict(X), color='y')
 
 plt.show()
-  
+"""  
