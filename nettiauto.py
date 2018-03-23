@@ -2,11 +2,19 @@ import requests
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import math
 
-from sklearn import datasets
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
+
+
+from sklearn import model_selection
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
 
 
 from bs4 import BeautifulSoup
@@ -130,9 +138,9 @@ for i in range(len(lista)):
         
  
 # lisätään tiedot pandasin datafreimiin
-df = pd.DataFrame({'id':ids, 'hinta':hinta, 'mittarilukema':mittarilukema, 
+df = pd.DataFrame({'hinta':hinta, 'mittarilukema':mittarilukema, 
                    'vuosimalli':vuosimalli, 'kayttovoima':kayttovoima,
-                   'malli':malli, 'moottori':moottori, 'vaihteisto':vaihteisto})
+                   'moottori':moottori, 'vaihteisto':vaihteisto})
 
 #muutetaan mittarilukema numeroksi
 df['mittarilukema'] = df['mittarilukema'].str.replace('km','')
@@ -158,42 +166,94 @@ df['vaihteisto'] = df['vaihteisto'].str.replace('Manuaali', '0')
 df['vaihteisto'] = df['vaihteisto'].str.replace('Automaatti', '1')
 df['vaihteisto'] = pd.to_numeric(df['vaihteisto'])
 
-
+"""
 #Datan muovaamista ja visualisointia
 
+#luodaan uusi datafreimi, jossa muut arvot vuosimallin mukaan keskiarvona
 df_1 = df.groupby(['vuosimalli']).mean()
-
 df_1['maara'] = df['vuosimalli'].value_counts()
 
-
+#kuvaaja joka näyttää keskihinnan vuosimallille
 df_1['hinta'].plot.bar()
 plt.ylabel('hinta')
 plt.show()
 
-
+#kuvaaja näyttää keskikilometrit vuosimallille
 df_1['mittarilukema'].plot.bar()
 plt.ylabel('Km')
 plt.show()
 
+#kuvaaaja näyttää vuosimallien osuudet kokonaisotannasta
 df_1['maara'].plot.pie()
 plt.show()
+
+vaihteisto_osuudet['maara'].plot.pie()
+plt.show()
+
+
+kayttovoima_osuudet['maara'].plot.pie()
+plt.show()
+"""
 
 #aloitetaan koneoppimisosuus
 
 
+array = df.values 
+X = array[:,0:5]
+y = array[:,0]
+validation_size = 0.20
+seed = 7
+scoring = 'accuracy'
 
-"""
- # Classifier to be used
-clf = linear_model.LinearRegression()
-print(df.corr())
+X_train, X_validation, y_train, y_validation = model_selection.train_test_split(
+        X, y, test_size=validation_size, random_state=seed)
 
-X = df['mittarilukema'].values[:, np.newaxis]     # Feature data set
-y = df['hinta']                         # Label data set
 
-classifier = clf.fit(X, y)
 
-plt.scatter(X, y, color='g')
-plt.plot(X, classifier.predict(X), color='y')
 
+# Spot Check Algorithms
+models = []
+models.append(('LR', LogisticRegression()))
+models.append(('LDA', LinearDiscriminantAnalysis()))
+models.append(('KNN', KNeighborsClassifier()))
+models.append(('CART', DecisionTreeClassifier()))
+models.append(('NB', GaussianNB()))
+models.append(('SVM', SVC()))
+# evaluate each model in turn
+results = []
+names = []
+for name, model in models:
+	kfold = model_selection.KFold(n_splits=10, random_state=seed)
+	cv_results = model_selection.cross_val_score(model, X_train, y_train, cv=kfold, scoring=scoring)
+	results.append(cv_results)
+	names.append(name)
+	msg = "%s: %f (%f)" % (name, cv_results.mean(), cv_results.std())
+	print(msg)
+    
+    
+# Compare Algorithms
+fig = plt.figure()
+fig.suptitle('Algorithm Comparison')
+ax = fig.add_subplot(111)
+plt.boxplot(results)
+ax.set_xticklabels(names)
 plt.show()
-"""  
+
+
+
+# Make predictions on validation dataset
+lr = LogisticRegression()
+lr.fit(X_train, y_train)
+predictions = lr.predict(X_validation)
+print(accuracy_score(y_validation, predictions))
+print(confusion_matrix(y_validation, predictions))
+print(classification_report(y_validation, predictions))
+
+
+
+
+
+
+
+
+
