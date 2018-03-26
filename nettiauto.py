@@ -20,16 +20,48 @@ from sklearn.svm import SVC
 from bs4 import BeautifulSoup
 
 #Pyydetään hakutuloksia
-response = requests.get('https://www.nettiauto.com/audi/a3?sortCol=enrolldate&ord=DESC')
+response = requests.get('https://www.nettiauto.com/audi/a3?page=1')
+
 
 
 soup = BeautifulSoup(response.content, 'html.parser')
+
+
+#haetaan seuraavan sivun url
+url = soup.find('a', class_ = 'pageNavigation next_link').get('href')
+
+linkit = []
+linkit.append(url)
+
+def rekursio(url, linkit):
+    url = 'https://www.nettiauto.com' + url
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    tarkistus = soup.find('span', class_ = 'disable next_link')
+    print(type(tarkistus))
+    if type(tarkistus) == None:
+        return linkit
+    else:
+        url = soup.find('a', class_ = 'pageNavigation next_link').get('href')
+        linkit.append(url)
+        return rekursio(url, linkit)
+    
+rekursio(url, linkit)
+
+
+###for linkki in linkit:
+
+
 
 #haetaan kaikki autoihin liittyvät linkit
 car_containers = soup.find_all('a', class_ = 'childVifUrl tricky_link')
 data_box = soup.find_all('div', class_ = 'data_box')
 infos = soup.find_all('div', class_ = 'vehicle_other_info clearfix_nett')
 
+
+#haetaan seuraavan sivun url
+url = soup.find('a', class_ = 'pageNavigation next_link').get('href')
 
 
 #luodaan listoja ominaisuuksille
