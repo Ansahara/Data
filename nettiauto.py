@@ -5,16 +5,16 @@ import matplotlib.pyplot as plt
 
 
 
-from sklearn import model_selection
-from sklearn.metrics import classification_report
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import accuracy_score
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import SVC
+
+from sklearn import preprocessing
+from sklearn import linear_model
+from sklearn import datasets
+from sklearn import ensemble
+
+
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import cross_val_predict
+from sklearn.cross_validation import train_test_split
 
 
 from bs4 import BeautifulSoup
@@ -32,7 +32,7 @@ url = soup.find('a', class_ = 'pageNavigation next_link').get('href')
 url = 'https://www.nettiauto.com' + url
 
 #luodaan lista, johon lisätään ansimäisen ja toisen sivun url
-linkit = ['https://www.nettiauto.com/audi/a3?page=1']
+linkit = ['https://www.nettiauto.com/skoda/octavia?page=1']
 linkit.append(url)
 
 def rekursio(url, linkit):
@@ -227,6 +227,10 @@ df_1['mittarilukema'].plot.bar()
 plt.ylabel('Km')
 plt.show()
 
+df_1['maara'].plot.bar()
+plt.ylabel('maara')
+plt.show()
+
 #kuvaaaja näyttää vuosimallien osuudet kokonaisotannasta
 df_1['maara'].plot.pie()
 plt.show()
@@ -244,56 +248,70 @@ plt.show()
 #aloitetaan koneoppimisosuus
 
 
-array = df.values 
-X = array[:,0:5]
-y = array[:,0]
-validation_size = 0.20
-seed = 7
-scoring = 'accuracy'
+df['vuosimalli'] = pd.to_numeric(df['vuosimalli'])
 
-X_train, X_validation, y_train, y_validation = model_selection.train_test_split(
-        X, y, test_size=validation_size, random_state=seed)
+df.describe()
+
+print(df.corr())
 
 
 
+lr = LinearRegression()
 
-# Spot Check Algorithms
-models = []
-models.append(('LR', LogisticRegression()))
-models.append(('LDA', LinearDiscriminantAnalysis()))
-models.append(('KNN', KNeighborsClassifier()))
-models.append(('CART', DecisionTreeClassifier()))
-models.append(('NB', GaussianNB()))
-models.append(('SVM', SVC()))
-# evaluate each model in turn
-results = []
-names = []
-for name, model in models:
-	kfold = model_selection.KFold(n_splits=10, random_state=seed)
-	cv_results = model_selection.cross_val_score(model, X_train, y_train, cv=kfold, scoring=scoring)
-	results.append(cv_results)
-	names.append(name)
-	msg = "%s: %f (%f)" % (name, cv_results.mean(), cv_results.std())
-	print(msg)
-    
-    
-# Compare Algorithms
-fig = plt.figure()
-fig.suptitle('Algorithm Comparison')
-ax = fig.add_subplot(111)
-plt.boxplot(results)
-ax.set_xticklabels(names)
+
+y = df.hinta
+to_remove = ['hinta']
+x = df[df.columns.difference(to_remove)]
+predict = cross_val_predict(lr, x, y, cv=30)
+
+fig, ax = plt.subplots()
+ax.scatter(y, predict, edgecolors=(0, 0, 0))
+#ax.plot([y.min(), y.max()], [y.min(), y.max()], 'k--', lw=4)
+ax.set_xlabel('Measured')
+ax.set_ylabel('Predicted')
 plt.show()
 
 
 
-# Make predictions on validation dataset
-lr = LogisticRegression()
-lr.fit(X_train, y_train)
-predictions = lr.predict(X_validation)
-print(accuracy_score(y_validation, predictions))
-print(confusion_matrix(y_validation, predictions))
-print(classification_report(y_validation, predictions))
+
+df_2 = pd.DataFrame({'ennuste':predict, 'hinta':y, 'erotus':predict-y})
+df['ennuste'] = predict
+df['erotus'] =df['ennuste']-df['hinta']
+df = df.sort_values(by='erotus', axis=0 , ascending=False)
+df = df.sort_values(by='hinta', axis=0, ascending=True)
+
+
+
+
+
+#train testing
+
+reg = LinearRegression()
+
+labels = df['hinta']
+train1 = df.drop(['hinta'],axis=1)
+
+x_train , x_test , y_train , y_test = train_test_split(train1 , labels , test_size = 0.10,random_state =2)
+reg.fit(x_train,y_train)
+reg.score(x_test,y_test)
+
+clf = ensemble.GradientBoostingRegressor(n_estimators = 400, max_depth = 5, min_samples_split = 2,
+          learning_rate = 0.1, loss = 'ls')
+
+clf.fit(x_train, y_train)
+clf.score(x_test,y_test)
+
+
+df['prediction'] = clf.predict(df.drop(['hinta'],axis=1)) 
+df['erotus'] =df['prediction']-df['hinta']
+df = df.sort_values(by='erotus', axis=0 , ascending=False) 
+
+
+
+prediction = pd.DataFrame({'vuosimalli':[2007], 'mittarilukema': [200000], 'moottori': [1.6], 'kayttovoima':0, 'vaihteisto':0})
+hinta = clf.predict(prediction)
+
+
 
 
 
